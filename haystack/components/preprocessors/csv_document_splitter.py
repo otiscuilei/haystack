@@ -226,7 +226,14 @@ class CSVDocumentSplitter:
         sub_tables = []
         table_start_idx = 0
         df_length = df.shape[0] if axis == "row" else df.shape[1]
-        for empty_start_idx, empty_end_idx in split_indices + [(df_length, df_length)]:
+        # _find_split_indices returns axis labels; convert them to positions so the
+        # iloc slicing below is correct even when a recursive sub-table carries
+        # non-contiguous labels inherited from its parent DataFrame.
+        axis_index = df.index if axis == "row" else df.columns
+        position_split_indices = [
+            (axis_index.get_loc(empty_start), axis_index.get_loc(empty_end)) for empty_start, empty_end in split_indices
+        ]
+        for empty_start_idx, empty_end_idx in position_split_indices + [(df_length, df_length)]:
             # Avoid empty splits
             if empty_start_idx - table_start_idx >= 1:
                 if axis == "row":

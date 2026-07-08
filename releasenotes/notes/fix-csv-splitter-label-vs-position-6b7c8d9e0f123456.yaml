@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `CSVDocumentSplitter` leaking empty separator rows/columns into
+    sub-tables during recursive splitting. Split points were computed as axis
+    labels but used as positional indices, which only matched at the top level;
+    a recursive sub-table carries its parent's non-contiguous labels, so the
+    empty separator was not sliced out. Labels are now converted to positions
+    before slicing.

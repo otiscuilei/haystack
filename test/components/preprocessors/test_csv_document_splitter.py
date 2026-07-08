@@ -343,3 +343,24 @@ E,F,,,G,H
     def test_incorrect_split_mode(self) -> None:
         with pytest.raises(ValueError, match="not recognized"):
             CSVDocumentSplitter(split_mode="incorrect_mode")
+
+    def test_recursive_split_does_not_leak_empty_separator_columns(self) -> None:
+        csv = "L,,,P,Q,R,S\nL,,,p,q,r,s\nL,,,,,,\nL,,,,,,\nL,,,A,,,B\nL,,,a,,,b\n"
+        result = CSVDocumentSplitter().run([Document(content=csv)])["documents"]
+        assert all(",,," not in doc.content for doc in result)
+
+    def test_recursive_split_does_not_leak_empty_separator_rows(self) -> None:
+        # Transpose of the column case: the split is symmetric, so the same label-vs-position
+        # bug bites the row axis. A top-level row split carves out a band with offset row labels
+        # (rows 3..6); a later column split exposes two rows that are empty ONLY within that band
+        # (labels 4 and 5, i.e. positions 1 and 2 of the band). The recursive row split then
+        # receives axis labels but must slice by position. On the buggy code the empty separator
+        # rows are not sliced out and get re-detected on every recursion, leaking them into the
+        # emitted sub-table (in practice recursing until it raises RecursionError).
+        csv = "L,L,L,L,L,L\n,,,,,\n,,,,,\nP,p,,,A,a\nQ,q,,,,\nR,r,,,,\nS,s,,,B,b\n"
+        result = CSVDocumentSplitter().run([Document(content=csv)])["documents"]
+        # No emitted sub-table should contain a fully empty (all-separator) row.
+        assert all(
+            line.replace(",", "").strip() != "" for doc in result for line in doc.content.splitlines()
+        )
+        assert sorted(doc.content for doc in result) == ["A,a\n", "B,b\n", "L,L,L,L,L,L\n", "P,p\nQ,q\nR,r\nS,s\n"]
