@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Hardened `JSONConverter` against malformed input when only ``content_key`` is
+    set. Previously a single source with invalid JSON raised ``JSONDecodeError``
+    and aborted conversion of the whole batch; a non-UTF-8 `ByteStream` without a
+    ``file_path`` raised ``KeyError`` while logging the skip warning; and a
+    non-string scalar ``content_key`` value (int, float, bool) reached the
+    `Document` constructor and raised. Malformed JSON and undecodable bytes are
+    now skipped with a warning, and scalar values are coerced to strings.

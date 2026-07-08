@@ -516,3 +516,19 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
         "and for his related discovery of nuclear reactions brought about by slow neutrons"
     )
     assert result["documents"][3].meta == {"id": "46", "firstname": "Enrico", "surname": "Fermi", "share": "1"}
+
+
+def test_run_skips_malformed_json_with_content_key():
+    result = JSONConverter(content_key="text").run(sources=[ByteStream(data=b"{not valid json}")])
+    assert result == {"documents": []}
+
+
+def test_run_skips_non_utf8_bytestream_without_file_path():
+    result = JSONConverter(content_key="text").run(sources=[ByteStream(data=b"\xff\xfe\xfa")])
+    assert result == {"documents": []}
+
+
+def test_run_coerces_non_string_scalar_content_key_value():
+    result = JSONConverter(content_key="text").run(sources=[ByteStream(data=json.dumps({"text": 123}).encode())])
+    assert len(result["documents"]) == 1
+    assert result["documents"][0].content == "123"
