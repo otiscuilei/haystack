@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `DocumentSplitter` duplicating overlap words when both `split_overlap`
+    and `split_threshold` are set and the final short window is merged into the
+    previous chunk. The merge now appends only the non-overlapping tail of the
+    window, so no content is duplicated and each chunk's ``split_idx_start`` stays
+    consistent with its content.

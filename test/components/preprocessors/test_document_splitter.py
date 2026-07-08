@@ -108,6 +108,15 @@ class TestSplittingByFunctionOrCharacterRegex:
             == "This is a text with some words. There is a second sentence. And there is a third sentence."
         )
 
+    def test_split_by_word_with_overlap_and_threshold_no_duplicate_units(self):
+        splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1, split_threshold=3)
+        result = splitter.run(documents=[Document(content="a b c d e f")])
+        contents = [doc.content for doc in result["documents"]]
+        assert contents == ["a b c ", "c d e f"]
+        for doc in result["documents"]:
+            start = doc.meta["split_idx_start"]
+            assert doc.content == "a b c d e f"[start : start + len(doc.content)]
+
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         text1 = "This is a text with some words. There is a second sentence. And there is a third sentence."
