@@ -50,7 +50,7 @@ def deserialize_component_inplace(data: dict[str, Any], key: str = "chat_generat
 
     try:
         component_class = import_class_by_name(serialized_component["type"])
-    except ImportError as e:
+    except (ImportError, ValueError) as e:
         raise DeserializationError(f"Class '{serialized_component['type']}' not correctly imported") from e
 
     data[key] = component_from_dict(cls=component_class, data=serialized_component, name=key)

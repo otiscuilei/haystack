@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `deserialize_component_inplace` leaking a raw ``ValueError`` when a
+    serialized component's ``type`` is not a valid dotted import path (e.g. a
+    bare class name with no module). It now raises the documented
+    ``DeserializationError`` in that case, like it already did for import
+    failures.

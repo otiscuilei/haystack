@@ -44,6 +44,11 @@ class TestDeserializeComponentInplace:
         with pytest.raises(DeserializationError):
             deserialize_component_inplace(data)
 
+    def test_class_name_without_module(self):
+        data = {"chat_generator": {"type": "NoModule", "init_parameters": {}}}
+        with pytest.raises(DeserializationError):
+            deserialize_component_inplace(data)
+
     def test_component_no_from_dict_method(self):
         chat_generator = ChatGeneratorWithoutFromDict()
         data = {"chat_generator": chat_generator.to_dict()}
