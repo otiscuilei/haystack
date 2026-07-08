@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 import warnings
 
 import pytest
@@ -120,6 +121,31 @@ class TestExtractedAnswer:
         span = ExtractedAnswer.Span(start=0, end=5)
         with pytest.warns(Warning, match="dataclasses.replace"):
             span.start = 1
+
+    def test_from_dict_does_not_mutate_input(self):
+        # Regression: from_dict must not mutate the caller's dict and must stay idempotent.
+        answer = ExtractedAnswer(
+            query="What is the answer?",
+            score=1.0,
+            data="42",
+            document=Document(content="The answer is 42."),
+            document_offset=ExtractedAnswer.Span(0, 3),
+            context_offset=ExtractedAnswer.Span(0, 3),
+        )
+        data = answer.to_dict()
+        snapshot = copy.deepcopy(data)
+
+        first = ExtractedAnswer.from_dict(data)
+
+        # The caller's dict must be left untouched (still plain nested dicts, no deserialized objects).
+        assert data == snapshot
+        assert isinstance(data["init_parameters"]["document"], dict)
+        assert isinstance(data["init_parameters"]["document_offset"], dict)
+        assert isinstance(data["init_parameters"]["context_offset"], dict)
+
+        # A second call on the same dict must not raise and must yield an equal object.
+        second = ExtractedAnswer.from_dict(data)
+        assert first == second
 
 
 class TestGeneratedAnswer:
@@ -293,3 +319,25 @@ class TestGeneratedAnswer:
         answer = GeneratedAnswer(data="42", query="q", documents=[])
         with pytest.warns(Warning, match="dataclasses.replace"):
             answer.data = "new"
+
+    def test_from_dict_does_not_mutate_input(self):
+        # Regression: from_dict must not mutate the caller's dict and must stay idempotent.
+        answer = GeneratedAnswer(
+            data="42",
+            query="What is the answer?",
+            documents=[Document(id="1", content="The answer is 42.")],
+            meta={"meta_key": "meta_value", "all_messages": [ChatMessage.from_user("What is the answer?")]},
+        )
+        data = answer.to_dict()
+        snapshot = copy.deepcopy(data)
+
+        first = GeneratedAnswer.from_dict(data)
+
+        # The caller's dict must be left untouched (still plain nested dicts, no deserialized objects).
+        assert data == snapshot
+        assert isinstance(data["init_parameters"]["documents"][0], dict)
+        assert isinstance(data["init_parameters"]["meta"]["all_messages"][0], dict)
+
+        # A second call on the same dict must not raise and must yield an equal object.
+        second = GeneratedAnswer.from_dict(data)
+        assert first == second

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `ExtractedAnswer.from_dict` and `GeneratedAnswer.from_dict` so they no longer mutate the
+    input dictionary. Previously they wrote the deserialized `document`, `document_offset`,
+    `context_offset`, `documents`, and `all_messages` values back into the caller's dict, silently
+    corrupting it and making a second `from_dict` call on the same dict raise an `AttributeError`.
+    Both methods now copy before writing, matching the copy-first pattern used in `Document.from_dict`,
+    so deserialization leaves the input untouched and is idempotent.

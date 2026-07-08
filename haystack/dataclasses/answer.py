@@ -79,15 +79,20 @@ class ExtractedAnswer:
         :returns:
             Deserialized object.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before writing so we don't mutate the caller's input dict and stay idempotent
+        # (this mirrors the copy-first pattern in Document.from_dict).
+        data = data.copy()
+        init_params = data.get("init_parameters", {}).copy()
+        data["init_parameters"] = init_params
+
         if (doc := init_params.get("document")) is not None:
-            data["init_parameters"]["document"] = Document.from_dict(doc)
+            init_params["document"] = Document.from_dict(doc)
 
         if (offset := init_params.get("document_offset")) is not None:
-            data["init_parameters"]["document_offset"] = ExtractedAnswer.Span(**offset)
+            init_params["document_offset"] = ExtractedAnswer.Span(**offset)
 
         if (offset := init_params.get("context_offset")) is not None:
-            data["init_parameters"]["context_offset"] = ExtractedAnswer.Span(**offset)
+            init_params["context_offset"] = ExtractedAnswer.Span(**offset)
         return default_from_dict(cls, data)
 
 
@@ -133,12 +138,16 @@ class GeneratedAnswer:
         :returns:
             Deserialized object.
         """
-        init_params = data.get("init_parameters", {})
+        # Copy before writing so we don't mutate the caller's input dict and stay idempotent
+        # (this mirrors the copy-first pattern in Document.from_dict).
+        data = data.copy()
+        init_params = data.get("init_parameters", {}).copy()
+        data["init_parameters"] = init_params
 
         if (documents := init_params.get("documents")) is not None:
             init_params["documents"] = [Document.from_dict(d) for d in documents]
 
-        meta = init_params.get("meta", {})
+        meta = init_params.get("meta", {}).copy()
         if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], dict):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
         init_params["meta"] = meta
