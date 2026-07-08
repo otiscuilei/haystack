@@ -134,9 +134,9 @@ class DocumentTypeRouter:
 
             matched = False
             if mime_type:
-                for pattern in self._mime_type_patterns:
-                    if pattern.fullmatch(mime_type):
-                        mime_types[pattern.pattern].append(doc)
+                for bucket_key, pattern in zip(self.mime_types, self._mime_type_patterns, strict=True):
+                    if mime_type == bucket_key or pattern.fullmatch(mime_type):
+                        mime_types[bucket_key].append(doc)
                         matched = True
                         break
             if not matched:

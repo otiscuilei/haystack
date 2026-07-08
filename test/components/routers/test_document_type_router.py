@@ -59,6 +59,12 @@ class TestDocumentTypeRouter:
         }
         assert component_to_dict(router, "router") == expected_dict
 
+    def test_run_routes_mime_type_with_regex_metacharacters(self):
+        router = DocumentTypeRouter(mime_type_meta_field="mime_type", mime_types=["image/svg+xml", "text/plain"])
+        out = router.run(documents=[Document(content="x", meta={"mime_type": "image/svg+xml"})])
+        assert len(out.get("image/svg+xml", [])) == 1
+        assert out.get("unclassified", []) == []
+
     def test_from_dict(self):
         router_dict = {
             "type": "haystack.components.routers.document_type_router.DocumentTypeRouter",

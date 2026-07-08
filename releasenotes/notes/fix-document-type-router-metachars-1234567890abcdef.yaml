@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `DocumentTypeRouter` misrouting MIME types that contain regex
+    metacharacters (for example ``image/svg+xml``). The configured MIME types
+    were only compared as regular-expression patterns, so a type whose literal
+    string contains a metacharacter never matched itself. It now compares the
+    MIME type by exact equality first, falling back to a regex match, mirroring
+    `FileTypeRouter`.
