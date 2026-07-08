@@ -427,3 +427,11 @@ if sys.version_info < (3, 14):
         assert serialize_type(Optional[dict]) == "typing.Optional[dict]"
         assert serialize_type(Optional[float]) == "typing.Optional[float]"
         assert serialize_type(Optional[bool]) == "typing.Optional[bool]"
+
+
+def test_serialize_deserialize_callable_roundtrip():
+    from typing import Callable
+
+    assert serialize_type(Callable[[int], str]) == "typing.Callable[[int], str]"
+    for callable_type in (Callable[[int], str], Callable[[int, str], bool], Callable[[], int]):
+        assert deserialize_type(serialize_type(callable_type)) == callable_type

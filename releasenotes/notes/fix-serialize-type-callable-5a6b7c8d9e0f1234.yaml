@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type``/``deserialize_type`` corrupting ``Callable`` types.
+    A ``Callable``'s parameter list (e.g. the ``[int, str]`` in
+    ``Callable[[int, str], bool]``) is a plain list rather than a type, so it was
+    serialized into a malformed string like ``typing.Callable[, str]`` and could
+    not be deserialized. Parameter lists are now serialized and deserialized
+    correctly, so ``Callable`` types round-trip.

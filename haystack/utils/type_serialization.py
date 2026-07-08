@@ -55,6 +55,10 @@ def serialize_type(target: Any) -> str:
     if target is NoneType:
         return "None"
 
+    if isinstance(target, list):
+        # Callable's parameter list, e.g. the [int, str] in Callable[[int, str], bool]
+        return "[" + ", ".join(serialize_type(t) for t in target) + "]"
+
     args = get_args(target)
 
     if isinstance(target, UnionType):
@@ -167,6 +171,11 @@ def deserialize_type(type_str: str) -> Any:
         If the module is not on the deserialization allowlist, or if the type cannot be
         deserialized due to a missing module or type.
     """
+    # A bracketed parameter list is Callable's first argument, e.g. the "[int, str]" in
+    # "Callable[[int, str], bool]"; deserialize it back to a list of types.
+    if type_str.startswith("[") and type_str.endswith("]"):
+        return [deserialize_type(arg) for arg in _parse_generic_args(type_str[1:-1])]
+
     # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
     pep604_union_args = _parse_pep604_union_args(type_str)
     if len(pep604_union_args) > 1:
