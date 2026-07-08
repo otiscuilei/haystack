@@ -427,3 +427,12 @@ if sys.version_info < (3, 14):
         assert serialize_type(Optional[dict]) == "typing.Optional[dict]"
         assert serialize_type(Optional[float]) == "typing.Optional[float]"
         assert serialize_type(Optional[bool]) == "typing.Optional[bool]"
+
+
+def test_serialize_deserialize_variadic_tuple_roundtrip():
+    from typing import Tuple
+
+    variadic_tuple = Tuple[int, ...]
+    serialized = serialize_type(variadic_tuple)
+    assert serialized == "typing.Tuple[int, ...]"
+    assert deserialize_type(serialized) == variadic_tuple

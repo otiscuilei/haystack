@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type``/``deserialize_type`` failing to round-trip a variadic
+    tuple such as ``Tuple[int, ...]``. The ``Ellipsis`` argument was serialized as
+    the unresolvable name ``Ellipsis`` and could not be deserialized. The literal
+    ``...`` is now handled symmetrically, so variadic tuples round-trip correctly.
