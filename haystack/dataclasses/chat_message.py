@@ -267,6 +267,25 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
     return {serialization_key: part.to_dict()}
 
 
+def _parse_openai_data_url(url: str) -> tuple[str | None, str]:
+    """
+    Parse a base64 data URL of the form ``data:{mime_type};base64,{data}``.
+
+    This is the inverse of the data URLs produced by :meth:`ChatMessage.to_openai_dict_format` for image and file
+    content parts.
+
+    :param url:
+        The data URL to parse.
+    :returns:
+        A tuple ``(mime_type, data)`` where ``mime_type`` is ``None`` if it cannot be determined.
+    """
+    header, _, data = url.partition(",")
+    if header.startswith("data:"):
+        header = header[len("data:") :]
+    mime_type = header.split(";", 1)[0] or None
+    return mime_type, data
+
+
 @_warn_on_inplace_mutation
 @dataclass
 class ChatMessage:
@@ -803,7 +822,36 @@ class ChatMessage:
         assert content is not None  # ensured by _validate_openai_message, but we need to make mypy happy
 
         if role == "user":
-            return cls.from_user(text=content, name=name)
+            if isinstance(content, str):
+                return cls.from_user(text=content, name=name)
+            if isinstance(content, list):
+                # OpenAI multimodal user messages send `content` as a list of content parts. This is also what
+                # `to_openai_dict_format` emits for user messages with images, files, or multiple text parts.
+                content_parts: list[TextContent | ImageContent | FileContent] = []
+                for part in content:
+                    if not isinstance(part, dict):
+                        raise ValueError(f"Unsupported content part in user message: {part!r}")
+                    part_type = part.get("type")
+                    if part_type == "text":
+                        content_parts.append(TextContent(text=part["text"]))
+                    elif part_type == "image_url":
+                        image_url = part["image_url"]
+                        mime_type, base64_image = _parse_openai_data_url(image_url["url"])
+                        content_parts.append(
+                            ImageContent(
+                                base64_image=base64_image, mime_type=mime_type, detail=image_url.get("detail")
+                            )
+                        )
+                    elif part_type == "file":
+                        file = part["file"]
+                        mime_type, base64_data = _parse_openai_data_url(file["file_data"])
+                        content_parts.append(
+                            FileContent(base64_data=base64_data, mime_type=mime_type, filename=file.get("filename"))
+                        )
+                    else:
+                        raise ValueError(f"Unsupported content part type in user message: {part_type!r}")
+                return cls.from_user(content_parts=content_parts, name=name)
+            raise ValueError(f"Unsupported content type for user message: {type(content).__name__}")
         if role in ["system", "developer"]:
             return cls.from_system(text=content, name=name)
 

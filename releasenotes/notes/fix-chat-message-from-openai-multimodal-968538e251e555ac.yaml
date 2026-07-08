@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `ChatMessage.from_openai_dict_format` silently corrupting multimodal user messages. When a user
+    message's `content` was a list of content parts (the standard OpenAI multimodal format, and exactly what
+    `ChatMessage.to_openai_dict_format` emits for user messages with images, files, or multiple parts), the list
+    was passed verbatim to `from_user(text=...)`, producing a `TextContent` whose `.text` was a Python list and
+    silently dropping any images or files. The method now parses list content into the appropriate text, image,
+    and file content parts, making the OpenAI dictionary round-trip lossless for multimodal user messages.

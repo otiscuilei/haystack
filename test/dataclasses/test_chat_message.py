@@ -937,6 +937,55 @@ class TestFromOpenaiDictFormat:
         assert message.text == "Hello, how are you?"
         assert message.name == "John"
 
+    def test_from_openai_dict_format_user_message_list_content(self):
+        # A user message whose `content` is a list of content parts (OpenAI multimodal format) must be parsed
+        # into content parts. Previously the list was shoved into a single TextContent whose `.text` was a list.
+        openai_msg = {"role": "user", "content": [{"type": "text", "text": "hello"}]}
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "user"
+        assert isinstance(message.text, str)
+        assert message.text == "hello"
+        assert message._content == [TextContent(text="hello")]
+
+    def test_from_openai_dict_format_multimodal_user_message_roundtrip(self, base64_image_string):
+        # A multimodal user message (text + image) must survive to_openai_dict_format -> from_openai_dict_format.
+        # Previously the images were silently dropped and the text became a list of content dicts.
+        original = ChatMessage.from_user(
+            content_parts=[
+                TextContent("What is in this image?"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="auto"),
+            ]
+        )
+        reconstructed = ChatMessage.from_openai_dict_format(original.to_openai_dict_format())
+
+        # text must be a real string, not a list of content dicts
+        assert isinstance(reconstructed.text, str)
+        assert reconstructed.text == "What is in this image?"
+
+        # the image must be preserved instead of silently dropped
+        assert len(reconstructed.images) == 1
+        assert reconstructed.images[0].base64_image == base64_image_string
+        assert reconstructed.images[0].mime_type == "image/png"
+        assert reconstructed.images[0].detail == "auto"
+
+        assert reconstructed == original
+
+    def test_from_openai_dict_format_user_message_with_file_content_roundtrip(self, base64_pdf_string):
+        original = ChatMessage.from_user(
+            content_parts=[
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf"),
+                TextContent("Is this document a paper about LLMs?"),
+            ]
+        )
+        reconstructed = ChatMessage.from_openai_dict_format(original.to_openai_dict_format())
+
+        assert reconstructed.text == "Is this document a paper about LLMs?"
+        assert len(reconstructed.files) == 1
+        assert reconstructed.files[0].base64_data == base64_pdf_string
+        assert reconstructed.files[0].mime_type == "application/pdf"
+        assert reconstructed.files[0].filename == "test.pdf"
+        assert reconstructed == original
+
     def test_from_openai_dict_format_system_message(self):
         openai_msg = {"role": "system", "content": "You are a helpful assistant"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
