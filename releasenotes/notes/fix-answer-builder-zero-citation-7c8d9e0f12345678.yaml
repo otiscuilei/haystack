@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `AnswerBuilder` resolving an invalid citation index of ``[0]`` (or a
+    range starting at ``0``) to the last document instead of ignoring it. The
+    1-based citation was converted to a 0-based index without a lower bound, so
+    ``[0]`` became ``-1`` and ``documents[-1]`` silently returned the last
+    document. Citations below ``1`` are now discarded like out-of-range ones.

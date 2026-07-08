@@ -297,10 +297,10 @@ class AnswerBuilder:
                         # set from an out-of-range citation like `[1-999999999]` in the Generator output.
                         if num_documents is not None:
                             end = min(end, num_documents)
-                        idxs.update(range(start - 1, end))
-                    else:
+                        idxs.update(range(max(start - 1, 0), end))
+                    elif int(part) >= 1:
                         idxs.add(int(part) - 1)
-            else:
+            elif int(match) >= 1:
                 idxs.add(int(match) - 1)
         return idxs
 

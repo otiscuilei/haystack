@@ -146,6 +146,17 @@ class TestAnswerBuilder:
         assert answers[0].documents[0].meta["referenced"] is True
         assert answers[0].documents[0].meta["source_index"] == 2
 
+    def test_run_ignores_zero_or_negative_citation_index(self):
+        component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=True)
+        output = component.run(
+            query="test query",
+            replies=["See [0]."],
+            documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+        )
+        # A citation index of [0] is invalid; it must be ignored, not resolve to
+        # the last document via documents[-1].
+        assert output["answers"][0].documents == []
+
     def test_run_with_documents_with_reference_pattern_return_all_documents(self):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=False)
         output = component.run(
