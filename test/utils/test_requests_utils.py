@@ -51,6 +51,16 @@ class TestRequestWithRetry:
             assert response == mock_httpx_response
             mock_request.assert_called_once_with(method="GET", url="https://example.com", timeout=30)
 
+    def test_request_with_retry_preserves_timeout_across_retries(self, mock_httpx_response):
+        """The caller's timeout must be used on retries, not reverted to the default."""
+        with patch("httpx.Client.request") as mock_request:
+            mock_request.side_effect = [httpx.ConnectError("boom"), mock_httpx_response]
+            request_with_retry(method="GET", url="https://example.com", timeout=30, attempts=3)
+
+            assert mock_request.call_count == 2
+            for call in mock_request.call_args_list:
+                assert call.kwargs["timeout"] == 30
+
     def test_request_with_retry_with_headers(self, mock_httpx_response):
         """Test that request_with_retry passes headers correctly"""
         headers = {"Authorization": "Bearer token123"}

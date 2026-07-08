@@ -61,6 +61,10 @@ def request_with_retry(
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
+    # Pop the timeout once here, not inside the retried closure, so a
+    # caller-provided timeout is preserved across retries.
+    timeout = kwargs.pop("timeout", 10)
+
     @retry(
         reraise=True,
         wait=wait_exponential(),
@@ -70,7 +74,6 @@ def request_with_retry(
         after=after_log(logger, logging.DEBUG),
     )
     def run() -> httpx.Response:
-        timeout = kwargs.pop("timeout", 10)
         with httpx.Client() as client:
             res = client.request(**kwargs, timeout=timeout)
 
@@ -171,6 +174,10 @@ async def async_request_with_retry(
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
+    # Pop the timeout once here, not inside the retried closure, so a
+    # caller-provided timeout is preserved across retries.
+    timeout = kwargs.pop("timeout", 10)
+
     @retry(
         reraise=True,
         wait=wait_exponential(),
@@ -180,7 +187,6 @@ async def async_request_with_retry(
         after=after_log(logger, logging.DEBUG),
     )
     async def run() -> httpx.Response:
-        timeout = kwargs.pop("timeout", 10)
         async with httpx.AsyncClient() as client:
             res = await client.request(**kwargs, timeout=timeout)
 

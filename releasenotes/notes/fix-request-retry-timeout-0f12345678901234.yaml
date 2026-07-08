@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `request_with_retry` and `async_request_with_retry` dropping a
+    caller-provided ``timeout`` on retries. The timeout was popped from the
+    keyword arguments inside the retried closure, so after the first attempt it
+    was gone and subsequent attempts fell back to the default. The timeout is now
+    read once before retrying and reused on every attempt.
