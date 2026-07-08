@@ -7,7 +7,13 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from haystack.utils.auth import EnvVarSecret, Secret, SecretType, TokenSecret
+from haystack.utils.auth import (
+    EnvVarSecret,
+    Secret,
+    SecretType,
+    TokenSecret,
+    deserialize_secrets_inplace,
+)
 
 
 def test_secret_type():
@@ -85,3 +91,15 @@ def test_env_var_secret():
         secret._strict = False  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
         secret._type = SecretType.TOKEN  # type: ignore[misc]
+
+
+def test_deserialize_secrets_inplace_recursive_deserializes_matched_and_nested():
+    secret = Secret.from_env_var("HAYSTACK_TEST_SECRET").to_dict()
+
+    top_level = {"api_key": dict(secret)}
+    deserialize_secrets_inplace(top_level, keys=["api_key"], recursive=True)
+    assert isinstance(top_level["api_key"], Secret)
+
+    nested = {"outer": {"inner": {"api_key": dict(secret)}}}
+    deserialize_secrets_inplace(nested, keys=["api_key"], recursive=True)
+    assert isinstance(nested["outer"]["inner"]["api_key"], Secret)
