@@ -406,7 +406,15 @@ class ConditionalRouter:
                 t = self._env.from_string(route["condition"])
                 rendered = t.render(**kwargs)
                 if not self._unsafe:
-                    rendered = ast.literal_eval(rendered)
+                    # Evaluating the rendered condition can fail (e.g. it renders to a bareword such as
+                    # 'hello' instead of a valid Python literal). Wrap those failures in
+                    # RouteConditionException so condition-evaluation errors are reported consistently,
+                    # rather than leaking a raw ValueError past the handler below.
+                    try:
+                        rendered = ast.literal_eval(rendered)
+                    except (ValueError, SyntaxError) as exc:
+                        msg = f"Error evaluating condition for route '{route}': {exc}"
+                        raise RouteConditionException(msg) from exc
                 if not rendered:
                     continue
 
@@ -451,6 +459,9 @@ class ConditionalRouter:
 
                 return result
 
+            except RouteConditionException:
+                # Already wrapped condition-evaluation error, propagate as-is (no double wrapping).
+                raise
             except Exception as e:
                 # If this was a type-validation failure or missing passthrough variable, let it propagate
                 if isinstance(e, ValueError):

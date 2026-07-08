@@ -10,7 +10,7 @@ from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
-from haystack.components.routers.conditional_router import NoRouteSelectedException
+from haystack.components.routers.conditional_router import NoRouteSelectedException, RouteConditionException
 from haystack.dataclasses import ChatMessage
 
 
@@ -224,6 +224,23 @@ class TestRouter:
         kwargs = {"streams": [1, 2, 3], "query": "test"}
         with pytest.raises(NoRouteSelectedException):
             router.run(**kwargs)
+
+    def test_router_wraps_condition_eval_error_in_route_condition_exception(self):
+        """
+        A condition that renders to a non-literal bareword (e.g. '{{ x }}' with x='hello') fails
+        ``ast.literal_eval``. The run() contract promises a RouteConditionException for such
+        condition-evaluation errors; it must not leak a raw ValueError.
+        """
+        router = ConditionalRouter(
+            [{"condition": "{{ x }}", "output": "{{ x }}", "output_name": "out", "output_type": str}]
+        )
+
+        with pytest.raises(RouteConditionException) as exc_info:
+            router.run(x="hello")
+
+        # The wrapped exception must carry the offending route context and must not be a bare ValueError.
+        assert "Error evaluating condition for route" in str(exc_info.value)
+        assert not isinstance(exc_info.value, ValueError)
 
     def test_router_raises_value_error_if_route_not_dictionary(self):
         """

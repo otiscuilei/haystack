@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `ConditionalRouter.run()` leaking a raw `ValueError` when a route's condition renders to
+    a value that is not a valid Python literal (for example the condition `{{ x }}` where `x` is a
+    plain string). Such condition-evaluation failures are now consistently wrapped in a
+    `RouteConditionException` that includes the offending route, matching the documented behavior,
+    while deliberate `ValueError`s from output type validation and missing passthrough variables
+    continue to propagate unchanged.
