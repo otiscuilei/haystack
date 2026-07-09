@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `DocumentJoiner` with `join_mode="distribution_based_rank_fusion"` producing meaningless
+    rescaled scores (around 0.333 instead of the intended 0.0) when all documents in an input list share
+    the same score. The list is meant to be treated as uninformative and its documents rescaled to 0.0,
+    but floating-point rounding left the score range at a tiny non-zero value for many score values
+    (for example 0.1 or 0.2), defeating the exact `!= 0.0` check. The range is now compared with a
+    tolerance so uniform-score lists are correctly zeroed regardless of the specific score value.

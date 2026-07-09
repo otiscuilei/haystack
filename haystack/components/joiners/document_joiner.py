@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+import math
 from collections import defaultdict
 from dataclasses import replace
 from enum import Enum
@@ -228,14 +229,18 @@ class DocumentJoiner:
             max_score = mean_score + 3 * std_dev
             delta_score = max_score - min_score
 
-            # if all docs have the same score delta_score is 0, the docs are uninformative for the query
+            # If all docs have (approximately) the same score, delta_score is ~0 and the docs are uninformative for
+            # the query. We compare min_score and max_score with a tolerance instead of checking `delta_score != 0.0`
+            # because floating-point rounding leaves delta_score at a tiny non-zero value for many uniform score
+            # values (e.g. 0.1 or 0.2), which would otherwise produce meaningless rescaled scores.
+            scores_are_uniform = math.isclose(min_score, max_score, rel_tol=1e-9, abs_tol=1e-12)
             rescaled_lists.append(
                 [
                     replace(
                         doc,
-                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
-                        if delta_score != 0.0
-                        else 0.0,
+                        score=0.0
+                        if scores_are_uniform
+                        else ((doc.score if doc.score is not None else 0) - min_score) / delta_score,
                     )
                     for doc in documents
                 ]

@@ -276,6 +276,21 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
+    def test_run_with_distribution_based_rank_fusion_join_mode_uniform_scores_are_zeroed(self):
+        # When every document in a list shares the same score, the list is uninformative and DBSF must rescale
+        # all of its scores to 0.0. The score value 0.2 is not exactly representable in floating point, so the
+        # variance computed for the list is a tiny non-zero number (~1e-16) rather than exactly 0. A naive
+        # `delta_score != 0.0` guard is defeated by this, producing meaningless rescaled scores (~0.333).
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion", sort_by_score=False)
+        documents = [
+            Document(content="a", score=0.2),
+            Document(content="b", score=0.2),
+            Document(content="c", score=0.2),
+        ]
+        output = joiner.run([documents])
+        assert len(output["documents"]) == 3
+        assert all(doc.score == 0.0 for doc in output["documents"])
+
     def test_run_with_distribution_based_rank_fusion_join_mode_with_none_score(self):
         # Documents with score=None (e.g. from a non-scoring source) must not crash DBSF;
         # a missing score is treated as 0, consistent with how the statistics are computed.
