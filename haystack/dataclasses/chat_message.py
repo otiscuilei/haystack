@@ -245,6 +245,61 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
     raise ValueError(msg)
 
 
+def _parse_openai_data_url(url: str) -> tuple[str | None, str]:
+    """
+    Parse a base64 data URL of the form ``data:<mime_type>;base64,<data>``.
+
+    :param url:
+        The data URL to parse.
+    :returns:
+        A tuple ``(mime_type, base64_data)``. ``mime_type`` is ``None`` if it is not present in the URL.
+    :raises ValueError:
+        If the URL is not a base64-encoded data URL (e.g. a remote ``http(s)`` URL).
+    """
+    if not url.startswith("data:"):
+        raise ValueError(
+            f"Unsupported image or file URL: {url!r}. Only base64-encoded data URLs of the form "
+            "'data:<mime_type>;base64,<data>' are supported. To load a remote resource, use "
+            "`ImageContent.from_url` or `FileContent.from_url` before building the ChatMessage."
+        )
+    header, _, data = url.partition(",")
+    # header looks like "data:image/png;base64"
+    metadata = header[len("data:") :]
+    mime_type = metadata.split(";")[0] or None
+    return mime_type, data
+
+
+def _parse_openai_user_content_parts(content: list[dict[str, Any]]) -> list[TextContent | ImageContent | FileContent]:
+    """
+    Parse the list-form ``content`` of an OpenAI user message into Haystack content parts.
+
+    This is the inverse of the multimodal serialization performed by ``ChatMessage.to_openai_dict_format``.
+
+    :param content:
+        A list of OpenAI content part dictionaries.
+    :returns:
+        A list of ``TextContent``, ``ImageContent``, and ``FileContent`` objects.
+    :raises ValueError:
+        If a content part has an unsupported type.
+    """
+    parts: list[TextContent | ImageContent | FileContent] = []
+    for part in content:
+        part_type = part.get("type")
+        if part_type == "text":
+            parts.append(TextContent(text=part["text"]))
+        elif part_type == "image_url":
+            image_url = part["image_url"]
+            mime_type, base64_image = _parse_openai_data_url(image_url["url"])
+            parts.append(ImageContent(base64_image=base64_image, mime_type=mime_type, detail=image_url.get("detail")))
+        elif part_type == "file":
+            file_info = part["file"]
+            mime_type, base64_data = _parse_openai_data_url(file_info["file_data"])
+            parts.append(FileContent(base64_data=base64_data, mime_type=mime_type, filename=file_info.get("filename")))
+        else:
+            raise ValueError(f"Unsupported content part in OpenAI user message: {part}")
+    return parts
+
+
 def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
     """
     Serialize a single content part of a ChatMessage.
@@ -803,6 +858,8 @@ class ChatMessage:
         assert content is not None  # ensured by _validate_openai_message, but we need to make mypy happy
 
         if role == "user":
+            if isinstance(content, list):
+                return cls.from_user(content_parts=_parse_openai_user_content_parts(content), name=name)
             return cls.from_user(text=content, name=name)
         if role in ["system", "developer"]:
             return cls.from_system(text=content, name=name)

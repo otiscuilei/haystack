@@ -1002,6 +1002,31 @@ class TestFromOpenaiDictFormat:
         with pytest.raises(ValueError):
             ChatMessage.from_openai_dict_format({"role": "user"})
 
+    def test_from_openai_dict_format_multimodal_user_message_roundtrip(self):
+        base64_image = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+        )
+        original = ChatMessage.from_user(
+            content_parts=["describe this image", ImageContent(base64_image=base64_image, mime_type="image/png")]
+        )
+
+        openai_msg = original.to_openai_dict_format()
+        # to_openai_dict_format emits multimodal content as a list of parts
+        assert isinstance(openai_msg["content"], list)
+
+        reconstructed = ChatMessage.from_openai_dict_format(openai_msg)
+
+        assert reconstructed.role.value == "user"
+        # the text must be reconstructed as a string, not the raw list of OpenAI content parts
+        assert reconstructed.text == "describe this image"
+        assert reconstructed.texts == ["describe this image"]
+        # the image must be preserved instead of being silently dropped
+        assert len(reconstructed.images) == 1
+        assert reconstructed.images[0].base64_image == base64_image
+        assert reconstructed.images[0].mime_type == "image/png"
+        # the message must survive a full roundtrip back to the OpenAI format
+        assert reconstructed.to_openai_dict_format() == openai_msg
+
     def test_from_openai_dict_format_invalid_tool_calls(self):
         openai_msg = {"role": "assistant", "tool_calls": [{"invalid": "format"}]}
         with pytest.raises(ValueError):

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``ChatMessage.from_openai_dict_format`` silently corrupting multimodal user messages. When the ``content``
+    field was a list of parts (the standard OpenAI format for messages containing images or files), the entire list was
+    stored verbatim inside a single ``TextContent``, dropping any images or files and leaving ``ChatMessage.text`` as a
+    list instead of a string. List content is now parsed back into the corresponding ``TextContent``, ``ImageContent``,
+    and ``FileContent`` parts, so ``to_openai_dict_format``/``from_openai_dict_format`` round-trips correctly.
