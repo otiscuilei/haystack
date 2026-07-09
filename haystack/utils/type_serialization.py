@@ -55,6 +55,12 @@ def serialize_type(target: Any) -> str:
     if target is NoneType:
         return "None"
 
+    # Ellipsis (`...`) appears as an argument in types like `Tuple[int, ...]` and `Callable[..., X]`.
+    # It has no `__name__`, so the generic fallback below would serialize it to the bare string
+    # "Ellipsis", which does not round-trip. Emit the canonical "..." spelling instead.
+    if target is Ellipsis:
+        return "..."
+
     args = get_args(target)
 
     if isinstance(target, UnionType):
@@ -167,6 +173,12 @@ def deserialize_type(type_str: str) -> Any:
         If the module is not on the deserialization allowlist, or if the type cannot be
         deserialized due to a missing module or type.
     """
+    # Ellipsis (`...`) is a valid type argument in `Tuple[int, ...]` and `Callable[..., X]`. It must
+    # be handled before the module-prefix branch below, since "..." contains dots and would otherwise
+    # be misrouted into `_import_class_by_name`.
+    if type_str == "...":
+        return Ellipsis
+
     # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
     pep604_union_args = _parse_pep604_union_args(type_str)
     if len(pep604_union_args) > 1:

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed `serialize_type` and `deserialize_type` so that types containing `Ellipsis`
+    (`...`), such as variable-length tuples (`Tuple[int, ...]`) and `Callable[..., X]`,
+    now round-trip correctly. Previously `Ellipsis` was serialized to the bare string
+    `"Ellipsis"`, which failed to deserialize and raised a `DeserializationError`.

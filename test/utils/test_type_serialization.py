@@ -245,6 +245,20 @@ def test_output_type_round_trip_typing_generic_with_nonetype():
         assert deserialize_type(serialize_type(type_)) == type_
 
 
+def test_output_type_round_trip_ellipsis():
+    # Ellipsis (`...`) is a valid type argument in variable-length tuples and Callable signatures.
+    # It must serialize to the canonical "..." spelling and round-trip back to the same type.
+    from typing import Callable
+
+    assert serialize_type(Tuple[int, ...]) == "typing.Tuple[int, ...]"
+    assert deserialize_type("typing.Tuple[int, ...]") == Tuple[int, ...]
+    assert serialize_type(Callable[..., str]) == "typing.Callable[..., str]"
+    assert deserialize_type("typing.Callable[..., str]") == Callable[..., str]
+
+    for type_ in [Tuple[int, ...], Tuple[str, ...], Callable[..., str], Callable[..., int]]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
 def test_output_type_serialization_haystack_dataclasses():
     # typing
     # Answer
