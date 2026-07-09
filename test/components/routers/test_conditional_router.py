@@ -10,7 +10,7 @@ from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
-from haystack.components.routers.conditional_router import NoRouteSelectedException
+from haystack.components.routers.conditional_router import NoRouteSelectedException, RouteConditionException
 from haystack.dataclasses import ChatMessage
 
 
@@ -921,3 +921,16 @@ class TestRouter:
         router = ConditionalRouter(routes)
         result = router.run(**{"{{unclosed": "value"})
         assert result == {"out": "value"}
+
+    def test_condition_eval_error_raises_route_condition_exception(self):
+        """
+        When a condition renders to a value that is not a valid Python literal (e.g. a bare
+        non-boolean string), evaluating it fails. Per the run() contract this must surface as a
+        RouteConditionException, not leak the raw ValueError from ast.literal_eval.
+        """
+        router = ConditionalRouter(
+            [{"condition": "{{ flag }}", "output": "{{ value }}", "output_name": "out", "output_type": str}]
+        )
+
+        with pytest.raises(RouteConditionException, match="Error evaluating condition"):
+            router.run(flag="yes", value="hello")

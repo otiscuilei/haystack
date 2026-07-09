@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `ConditionalRouter.run` leaking a raw `ValueError` (with an opaque
+    `ast.literal_eval` message) when a route's condition rendered to a value
+    that is not a valid Python literal, such as a bare non-boolean string.
+    These condition-evaluation errors are now consistently wrapped in a
+    `RouteConditionException`, as documented in the method's contract.
