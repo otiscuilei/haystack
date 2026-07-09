@@ -198,3 +198,9 @@ class TestExpandPageRange:
     def test_malformed_range_with_multiple_hyphens_raises_value_error(self):
         with pytest.raises(ValueError, match="Invalid page range"):
             expand_page_range(["1-3", "5-10-15"])
+
+    def test_reversed_range_raises_value_error(self):
+        # A reversed range like "5-3" must fail loudly instead of silently
+        # expanding to nothing and dropping the requested pages.
+        with pytest.raises(ValueError, match="Invalid page range"):
+            expand_page_range(["1", "5-3", "7"])

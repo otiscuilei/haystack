@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `expand_page_range` now raises a `ValueError` for reversed range strings such
+    as `"5-3"` (where start is greater than end). Previously such ranges expanded
+    to nothing and were silently dropped, causing requested pages to disappear
+    without any error.
