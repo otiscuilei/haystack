@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` producing an incorrect ``split_idx_start`` (and the
+    ``_split_overlap`` character ranges derived from it) when ``split_unit="word"`` and
+    ``split_overlap`` was greater than zero. The overlap size was measured from the
+    whitespace-collapsed overlap string, which dropped the separator whitespace between the
+    overlapping words and shifted every overlapping chunk's character offset by one character per
+    intervening space. The offset is now computed from the actual position of the overlapping words
+    inside the chunk, so ``split_idx_start`` is again a correct character offset into the original
+    document.

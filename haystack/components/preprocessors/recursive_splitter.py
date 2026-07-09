@@ -449,17 +449,67 @@ class RecursiveDocumentSplitter:
 
             # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
-            # Advance current_position by chunk length minus overlap.
-            # split_overlap is in split_units, not chars, so get the actual
-            # overlap string from _get_overlap() and use its char length.
+            # Advance current_position (a character offset) to the start of the next chunk.
+            # The next chunk begins with the overlap shared with this chunk, so the advance is the
+            # character offset within this chunk where that overlap begins.
             if self.split_overlap > 0 and split_nr < len(chunks) - 1:
-                overlap_str, _ = self._get_overlap([doc.content for doc in new_docs])  # type: ignore[misc]
-                overlap_char_len = len(overlap_str)
+                current_position += self._overlap_start_offset(chunk)
             else:
-                overlap_char_len = 0
-            current_position += len(chunk) - overlap_char_len
+                current_position += len(chunk)
 
         return new_docs
+
+    def _overlap_start_offset(self, chunk: str) -> int:
+        """
+        Character offset within ``chunk`` where the overlap shared with the next chunk begins.
+
+        The next chunk starts with this overlap, so this offset is also the number of characters to
+        advance ``current_position`` to reach the start of the next chunk.
+
+        For "char" and "token" units the overlap string returned by ``_get_overlap`` is an exact
+        suffix of the chunk, so its character length gives the offset directly. For "word" units the
+        overlap string is rebuilt by joining words with single spaces, which drops the trailing (and
+        any interior) whitespace present in the chunk; using its length would make ``split_idx_start``
+        drift by one character per intervening space. Instead, locate the first overlapping word
+        inside the chunk so the offset remains a correct character offset.
+
+        :param chunk: The chunk whose overlap with the following chunk is being measured.
+        :returns: The character offset at which the overlap begins.
+        """
+        if self.split_units == "word":
+            overlap_start = max(0, self._chunk_length(chunk) - self.split_overlap)
+            return self._char_offset_of_word(chunk, overlap_start)
+        overlap_str, _ = self._get_overlap([chunk])
+        return len(chunk) - len(overlap_str)
+
+    @staticmethod
+    def _char_offset_of_word(text: str, word_index: int) -> int:
+        """
+        Character offset in ``text`` where the whitespace-delimited word at ``word_index`` begins.
+
+        ``word_index`` is 0-indexed and matches ``str.split()`` tokenization. If it is 0 the offset
+        is 0; if it is beyond the last word the length of ``text`` is returned.
+
+        :param text: The text to scan.
+        :param word_index: The 0-indexed word whose starting character offset is returned.
+        :returns: The character offset of the requested word.
+        """
+        if word_index <= 0:
+            return 0
+        count = 0
+        i = 0
+        length = len(text)
+        while i < length:
+            while i < length and text[i].isspace():
+                i += 1
+            if i >= length:
+                break
+            if count == word_index:
+                return i
+            count += 1
+            while i < length and not text[i].isspace():
+                i += 1
+        return length
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:

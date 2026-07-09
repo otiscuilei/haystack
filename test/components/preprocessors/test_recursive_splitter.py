@@ -786,6 +786,37 @@ def test_word_unit_split_populates_split_overlap_metadata():
     assert chunks[4].meta["_split_overlap"] == [{"doc_id": chunks[3].id, "range": (19, 23)}]  # "This"
 
 
+def test_word_unit_overlap_split_idx_start_with_whitespace_separator():
+    """
+    When split_unit="word", split_overlap > 0 and the separator is whitespace, chunks end with a
+    trailing separator that _get_overlap() drops when it re-joins the overlap words with single
+    spaces. split_idx_start (and the _split_overlap char ranges derived from it) must still be
+    correct character offsets into the original text and not drift by the omitted whitespace.
+    """
+    splitter = RecursiveDocumentSplitter(split_length=6, split_overlap=2, separators=[" "], split_unit="word")
+    text = "one two three four five six seven eight nine ten"
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    assert len(chunks) == 2
+    assert chunks[0].content == "one two three four five six "
+    assert chunks[1].content == "five six seven eight nine ten"
+
+    # split_idx_start must be an exact character offset: text[start:start+len] == content
+    for chunk in chunks:
+        start = chunk.meta["split_idx_start"]
+        assert text[start : start + len(chunk.content)] == chunk.content, (
+            f"Wrong split_idx_start for chunk {chunk.content!r}: got {start}"
+        )
+    # The second chunk begins at the 'f' of "five" (index 19), not 20.
+    assert chunks[1].meta["split_idx_start"] == 19
+
+    # The overlap char range recorded on the second chunk points back into the first chunk and must
+    # cover the shared "five six " region (chars 19..28), not a one-off-shifted "ive six ".
+    back_ref = next(o for o in chunks[1].meta["_split_overlap"] if o["doc_id"] == chunks[0].id)
+    ref_start, ref_end = back_ref["range"]
+    assert chunks[0].content[ref_start:ref_end] == "five six "
+
+
 @pytest.mark.integration
 def test_token_unit_split_populates_split_overlap_metadata():
     """
