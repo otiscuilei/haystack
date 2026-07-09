@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `MetaFieldRanker.run` so that passing `top_k=0` now raises a
+    `ValueError` instead of silently ignoring the value and returning all
+    documents. A run-time `top_k` of `0` was swallowed by a falsy check before
+    validation, which was inconsistent with the constructor (which already
+    rejects `top_k=0`) and with `LostInTheMiddleRanker`.
