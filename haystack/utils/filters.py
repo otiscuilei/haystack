@@ -198,7 +198,11 @@ def _comparison_condition(condition: dict[str, Any], document: Document | ByteSt
         # Handles fields formatted like so:
         # 'meta.person.name'
         parts = field.split(".")
-        document_value = getattr(document, parts[0])
+        # The first segment must be an actual attribute of the Document. If it
+        # isn't (e.g. a typo or a dotted path not rooted at a real field), we
+        # treat the lookup as a no-match instead of raising an AttributeError,
+        # mirroring how missing intermediate segments are handled below.
+        document_value = getattr(document, parts[0], None)
         for part in parts[1:]:
             if not isinstance(document_value, dict) or part not in document_value:
                 # If a field is not found (or an intermediate value is not a dict,

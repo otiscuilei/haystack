@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `document_matches_filter` (and therefore in-memory filtering) raising
+    an uncaught `AttributeError` when a filter's `field` used dotted syntax whose
+    first segment is not an actual Document attribute (e.g. `metadata.date`
+    instead of `meta.date`). Such a lookup is now treated as a no-match,
+    consistent with how unknown non-dotted fields and missing intermediate
+    segments are already handled.

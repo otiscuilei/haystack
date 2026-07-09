@@ -60,6 +60,12 @@ document_matches_filter_data = [
         False,
         id="== operator with nested field on non-dict intermediate value",
     ),
+    pytest.param(
+        {"field": "metadata.date", "operator": "==", "value": "x"},
+        Document(meta={"date": "x"}),
+        False,
+        id="== operator with dotted field whose root is not a Document attribute",
+    ),
     # != operator params
     pytest.param(
         {"field": "meta.name", "operator": "!=", "value": "test"},
